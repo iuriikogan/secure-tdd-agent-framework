@@ -1,0 +1,2290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Secure TDD with CodeMender &amp; Wiz Code — local security gate hook and CI pipeline. Companion deck to the Vibe Coding Product Development Lifecycle.">
+  <title>Securing the Vibe — Secure TDD with CodeMender &amp; Wiz</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans + DM Sans + IBM Plex Mono (with full system fallbacks) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..600&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==========================================================================
+       1. THEME TOKENS — Google Cloud Executive Clean (Sole Theme)
+       Scoped to body to avoid host iframe :root variable collisions
+       ========================================================================== */
+    body {
+      --deck-bg: #F8F9FA;
+      --deck-bg-pattern: rgba(26, 115, 232, 0.04);
+      --deck-surface: #FFFFFF;
+      --deck-surface-alt: #F1F3F4;
+      --deck-surface-bone: #E8F0FE;
+      --deck-surface-bone-text: #202124;
+      --deck-border: #DADCE0;
+      --deck-border-strong: #BDC1C6;
+      --deck-text: #202124;
+      --deck-text-secondary: #3C4043;
+      --deck-text-muted: #5F6368;
+
+      /* Google Cloud Clean Accents */
+      --deck-primary: #1A73E8;        /* Google Blue */
+      --deck-primary-soft: rgba(26, 115, 232, 0.09);
+      --deck-secondary: #007B83;      /* Security Teal */
+      --deck-secondary-soft: rgba(0, 123, 131, 0.09);
+      --deck-accent: #D93025;         /* Google Red (TDD RED Phase) */
+      --deck-accent-soft: rgba(217, 48, 37, 0.09);
+      --deck-highlight: #E37400;      /* Google Amber (System Planning) */
+      --deck-highlight-soft: rgba(227, 116, 0, 0.10);
+      --deck-success: #1E8E3E;        /* Google Green (Verification GREEN) */
+      --deck-success-soft: rgba(30, 142, 62, 0.10);
+
+      --deck-code-bg: #202124;
+      --deck-code-text: #F1F3F4;
+      --deck-shadow-sm: 0 1px 3px rgba(32, 33, 36, 0.08);
+      --deck-shadow-md: 0 8px 24px rgba(32, 33, 36, 0.12);
+      --deck-radius-sm: 6px;
+      --deck-radius-md: 10px;
+      --deck-radius-lg: 14px;
+
+      /* Typography — Google Cloud Clean Stack */
+      --font-display: 'Plus Jakarta Sans', 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-sans-head: 'Plus Jakarta Sans', 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+      /* Fluid Viewport-Fitted Sizing */
+      --slide-pad-y: clamp(0.85rem, 2.8vh, 2.5rem);
+      --slide-pad-x: clamp(1.25rem, 3.8vw, 4rem);
+      --h1-size: clamp(1.85rem, 4.1vw, 3.35rem);
+      --h2-size: clamp(1.4rem, 2.65vw, 2.2rem);
+      --h3-size: clamp(0.9rem, 1.18vw, 1.06rem);
+      --body-size: clamp(0.78rem, 0.96vw, 0.92rem);
+      --small-size: clamp(0.72rem, 0.84vw, 0.8rem);
+      --gap-lg: clamp(0.65rem, 1.6vh, 1.25rem);
+      --gap-md: clamp(0.5rem, 1.15vh, 0.85rem);
+      --gap-sm: clamp(0.3rem, 0.7vh, 0.5rem);
+    }
+
+    /* ==========================================================================
+       2. RESET & VIEWPORT FITTING BASE STYLES
+       ========================================================================== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      min-height: 640px;
+      overflow: hidden;
+      background-color: var(--deck-bg);
+      color: var(--deck-text);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.42;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(circle at 86% 14%, var(--deck-bg-pattern), transparent 42%),
+        radial-gradient(circle at 12% 88%, var(--deck-secondary-soft), transparent 45%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ==========================================================================
+       3. TOP CHROME BAR (Companion Context + Theme Switcher)
+       ========================================================================== */
+    .top-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 42px;
+      padding: 0 var(--slide-pad-x);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--deck-border);
+      background: var(--deck-bg);
+      z-index: 40;
+      font-size: var(--small-size);
+    }
+
+    .brand-cluster {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      color: var(--deck-text-secondary);
+    }
+
+    .brand-tag {
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      padding: 2px 9px;
+      border-radius: 4px;
+      background: var(--deck-primary-soft);
+      color: var(--deck-primary);
+      border: 1px solid var(--deck-primary);
+      letter-spacing: 0.03em;
+    }
+
+    .companion-tag {
+      color: var(--deck-text-muted);
+      font-weight: 500;
+    }
+
+    .top-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .theme-btn {
+      background: var(--deck-surface);
+      color: var(--deck-text-secondary);
+      border: 1px solid var(--deck-border);
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-family: var(--font-body);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .theme-btn:hover, .theme-btn.active-theme {
+      border-color: var(--deck-primary);
+      color: var(--deck-primary);
+      background: var(--deck-primary-soft);
+    }
+
+    /* ==========================================================================
+       4. SLIDE CONTAINER & TRANSITIONS
+       ========================================================================== */
+    .deck {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      min-height: 640px;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    .s {
+      display: none;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      min-height: 640px;
+      padding: calc(42px + var(--slide-pad-y)) var(--slide-pad-x) calc(44px + var(--slide-pad-y));
+      flex-direction: column;
+      justify-content: center;
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .s.active {
+      display: flex;
+      animation: slideFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes slideFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .slide-inner {
+      width: 100%;
+      max-width: 1340px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap-lg);
+    }
+
+    /* ==========================================================================
+       5. TYPOGRAPHY SCALE & HEADER ELEMENTS
+       ========================================================================== */
+    .eyebrow-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--deck-border);
+      padding-bottom: 6px;
+    }
+
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: var(--small-size);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 10px;
+      border-radius: 4px;
+      background: var(--deck-primary-soft);
+      color: var(--deck-primary);
+    }
+
+    .step-badge.badge-init { background: var(--deck-primary-soft); color: var(--deck-primary); }
+    .step-badge.badge-plan { background: var(--deck-highlight-soft); color: var(--deck-highlight); }
+    .step-badge.badge-tdd  { background: var(--deck-accent-soft); color: var(--deck-accent); }
+    .step-badge.badge-impl { background: var(--deck-secondary-soft); color: var(--deck-secondary); }
+    .step-badge.badge-ver  { background: var(--deck-success-soft); color: var(--deck-success); }
+
+    .skill-path-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: var(--small-size);
+      padding: 3px 10px;
+      border-radius: 4px;
+      background: var(--deck-surface-alt);
+      color: var(--deck-text-secondary);
+      border: 1px solid var(--deck-border-strong);
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: var(--h1-size);
+      font-weight: 700;
+      line-height: 1.08;
+      letter-spacing: -0.025em;
+      text-wrap: balance;
+      color: var(--deck-text);
+    }
+
+    h2 {
+      font-family: var(--font-display);
+      font-size: var(--h2-size);
+      font-weight: 700;
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+      text-wrap: balance;
+      color: var(--deck-text);
+    }
+
+    h3 {
+      font-family: var(--font-sans-head);
+      font-size: var(--h3-size);
+      font-weight: 700;
+      line-height: 1.22;
+      letter-spacing: -0.01em;
+      color: var(--deck-text);
+    }
+
+    .sub {
+      font-size: clamp(0.88rem, 1.18vw, 1.06rem);
+      color: var(--deck-text-secondary);
+      max-width: 85ch;
+      line-height: 1.42;
+      text-wrap: pretty;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.86em;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: var(--deck-surface-alt);
+      color: var(--deck-primary);
+      border: 1px solid var(--deck-border);
+    }
+
+    /* ==========================================================================
+       6. COMPONENT CLASSES (CARDS, HIGHLIGHT CARDS, GRIDS, TABLES, CODE)
+       ========================================================================== */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--gap-md);
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--gap-md);
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--gap-md);
+    }
+
+    .grid-asym {
+      display: grid;
+      grid-template-columns: 1.16fr 0.84fr;
+      gap: var(--gap-lg);
+      align-items: stretch;
+    }
+
+    .card {
+      background: var(--deck-surface);
+      border: 1px solid var(--deck-border);
+      border-radius: var(--deck-radius-md);
+      padding: clamp(0.7rem, 1.5vh, 1.15rem) clamp(0.85rem, 1.5vw, 1.25rem);
+      box-shadow: var(--deck-shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap-sm);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--deck-shadow-md);
+      border-color: var(--deck-border-strong);
+    }
+
+    /* Google Cloud Soft-Blue Highlight Card */
+    .card-bone {
+      background: var(--deck-surface-bone);
+      color: var(--deck-surface-bone-text);
+      border: 1px solid #AECBFA;
+    }
+
+    .card-bone h3, .card-bone strong {
+      color: var(--deck-surface-bone-text);
+    }
+
+    .card-bone p {
+      color: var(--deck-text-secondary);
+    }
+
+    .card-bone .card-kicker {
+      color: var(--deck-primary);
+    }
+
+    .card.accent-top-init { border-top: 3px solid var(--deck-primary); }
+    .card.accent-top-plan { border-top: 3px solid var(--deck-highlight); }
+    .card.accent-top-tdd  { border-top: 3px solid var(--deck-accent); }
+    .card.accent-top-impl { border-top: 3px solid var(--deck-secondary); }
+    .card.accent-top-ver  { border-top: 3px solid var(--deck-success); }
+
+    .card-kicker {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--deck-primary);
+    }
+
+    .clean-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(0.28rem, 0.7vh, 0.48rem);
+      font-size: var(--body-size);
+      color: var(--deck-text-secondary);
+    }
+
+    .clean-list li {
+      position: relative;
+      padding-left: 1rem;
+      line-height: 1.38;
+    }
+
+    .clean-list li::before {
+      content: "▪";
+      position: absolute;
+      left: 0;
+      color: var(--deck-primary);
+      font-weight: 700;
+    }
+
+    .clean-list li strong {
+      color: var(--deck-text);
+      font-weight: 600;
+    }
+
+    /* Code / Terminal Block */
+    .code-box {
+      background: var(--deck-code-bg);
+      color: var(--deck-code-text);
+      font-family: var(--font-mono);
+      font-size: clamp(0.7rem, 0.86vw, 0.82rem);
+      padding: clamp(0.6rem, 1.2vh, 0.95rem) 1rem;
+      border-radius: var(--deck-radius-md);
+      border: 1px solid var(--deck-border-strong);
+      line-height: 1.48;
+      overflow-x: auto;
+    }
+
+    .code-box code {
+      background: transparent;
+      border: none;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    .code-box .cm { color: #9AA0A6; }
+    .code-box .kw { color: #8AB4F8; font-weight: 600; }
+    .code-box .st { color: #81C995; }
+    .code-box .er { color: #F28B82; font-weight: 600; }
+
+    /* Interactive Lifecycle Strip on Hero Slide */
+    .hero-pipeline {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: var(--gap-sm);
+    }
+
+    .stage-pill-card {
+      background: var(--deck-surface);
+      border: 1px solid var(--deck-border);
+      border-top: 3px solid var(--deck-primary);
+      border-radius: var(--deck-radius-md);
+      padding: 11px 12px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.18s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stage-pill-card:hover {
+      border-color: var(--deck-primary);
+      background: var(--deck-surface-alt);
+      transform: translateY(-2px);
+      box-shadow: var(--deck-shadow-md);
+    }
+
+    .stage-pill-card .step-num {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--deck-primary);
+    }
+
+    .stage-pill-card .persona-name {
+      font-family: var(--font-sans-head);
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--deck-text);
+    }
+
+    .stage-pill-card .scope-label {
+      font-size: 0.75rem;
+      color: var(--deck-text-muted);
+      line-height: 1.32;
+    }
+
+    /* Data Table (Overview Matrix) */
+    .matrix-table-wrap {
+      background: var(--deck-surface);
+      border: 1px solid var(--deck-border);
+      border-radius: var(--deck-radius-md);
+      box-shadow: var(--deck-shadow-sm);
+      overflow: hidden;
+    }
+
+    table.matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: var(--body-size);
+    }
+
+    table.matrix-table th {
+      background: var(--deck-surface-alt);
+      color: var(--deck-primary);
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--deck-border-strong);
+    }
+
+    table.matrix-table td {
+      padding: clamp(7px, 1.1vh, 11px) 12px;
+      border-bottom: 1px solid var(--deck-border);
+      vertical-align: middle;
+      color: var(--deck-text-secondary);
+    }
+
+    table.matrix-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    table.matrix-table tbody tr {
+      cursor: pointer;
+      transition: background-color 0.12s ease;
+    }
+
+    table.matrix-table tbody tr:hover {
+      background-color: var(--deck-primary-soft);
+    }
+
+    .persona-cell {
+      font-weight: 700;
+      color: var(--deck-text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    /* Dual-Track Synergy Diagram (Slide 9) */
+    .dual-track-row {
+      display: grid;
+      grid-template-columns: 1fr 38px 1.2fr 1.15fr;
+      gap: 8px;
+      align-items: center;
+      background: var(--deck-surface);
+      border: 1px solid var(--deck-border);
+      border-radius: var(--deck-radius-sm);
+      padding: clamp(6px, 0.95vh, 10px) 12px;
+      font-size: var(--body-size);
+    }
+
+    .track-connector {
+      text-align: center;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--deck-primary);
+    }
+
+    /* Agentic Security Landscape — Four Layer Cards (Slide 2) */
+    .layer-card {
+      position: relative;
+      gap: 6px;
+    }
+
+    .layer-card .layer-index {
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 2.4vw, 2.2rem);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      color: var(--deck-border-strong);
+    }
+
+    .layer-card.layer-active .layer-index {
+      color: var(--deck-primary);
+    }
+
+    .layer-card .layer-stage {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--deck-text-muted);
+    }
+
+    .layer-card p {
+      font-size: var(--body-size);
+      color: var(--deck-text-secondary);
+      line-height: 1.4;
+    }
+
+    .scope-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--deck-primary);
+      color: #FFFFFF;
+    }
+
+    .ext-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: auto;
+      padding-top: 6px;
+    }
+
+    .ext-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--deck-border-strong);
+      background: var(--deck-surface);
+      color: var(--deck-primary);
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+
+    a.ext-link:hover {
+      border-color: var(--deck-primary);
+      background: var(--deck-primary-soft);
+    }
+
+    /* Callout Banner (Signal Bone Accent Bar) */
+    .callout-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 8px 14px;
+      border-radius: var(--deck-radius-sm);
+      background: var(--deck-surface-alt);
+      border: 1px solid var(--deck-border-strong);
+      border-left: 3px solid var(--deck-primary);
+      font-size: var(--small-size);
+      color: var(--deck-text-secondary);
+    }
+
+    /* ==========================================================================
+       7. QR CODE SLIDE STYLES (Google Cloud Clean Card)
+       ========================================================================== */
+    .qr-showcase-card {
+      background: var(--deck-surface-bone);
+      color: var(--deck-surface-bone-text);
+      border: 2px solid var(--deck-primary);
+      border-radius: var(--deck-radius-lg);
+      padding: clamp(0.85rem, 1.8vh, 1.4rem);
+      box-shadow: var(--deck-shadow-md);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .qr-showcase-card .card-kicker {
+      color: var(--deck-primary);
+    }
+
+    .qr-svg-frame {
+      background: #FFFFFF;
+      padding: 10px;
+      border-radius: 10px;
+      border: 2px solid #202124;
+      width: min(210px, 28vh);
+      height: min(210px, 28vh);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .qr-svg-frame svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .qr-url-editor {
+      display: flex;
+      width: 100%;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .qr-url-input {
+      flex: 1;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      padding: 6px 9px;
+      border-radius: 6px;
+      border: 1px solid var(--deck-border-strong);
+      background: #FFFFFF;
+      color: #202124;
+    }
+
+    .qr-url-btn {
+      padding: 6px 11px;
+      border-radius: 6px;
+      border: 1px solid var(--deck-primary);
+      background: var(--deck-primary);
+      color: #FFFFFF;
+      font-family: var(--font-body);
+      font-size: 0.74rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .qr-url-btn:hover {
+      background: #1557B0;
+    }
+
+    /* ==========================================================================
+       8. NAVIGATION, PROGRESS BAR, SPEAKER NOTES & PRESENTER CONTROLS
+       ========================================================================== */
+    .home-btn {
+      position: fixed;
+      bottom: 10px;
+      left: var(--slide-pad-x);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--deck-border-strong);
+      background: var(--deck-surface);
+      color: var(--deck-text);
+      font-size: 0.95rem;
+      cursor: pointer;
+      z-index: 45;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--deck-shadow-sm);
+      transition: all 0.15s ease;
+    }
+
+    .home-btn:hover {
+      border-color: var(--deck-primary);
+      color: var(--deck-primary);
+      transform: scale(1.05);
+    }
+
+    .deck-footer-hint {
+      position: fixed;
+      bottom: 16px;
+      left: calc(var(--slide-pad-x) + 42px);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--deck-text-muted);
+      z-index: 45;
+    }
+
+    nav.slide-nav {
+      position: fixed;
+      bottom: 10px;
+      right: var(--slide-pad-x);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 45;
+    }
+
+    nav.slide-nav button {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--deck-border-strong);
+      background: var(--deck-surface);
+      color: var(--deck-text);
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--deck-shadow-sm);
+      transition: all 0.15s ease;
+    }
+
+    nav.slide-nav button:hover {
+      border-color: var(--deck-primary);
+      color: var(--deck-primary);
+      transform: scale(1.05);
+    }
+
+    .counter {
+      position: fixed;
+      bottom: 16px;
+      right: calc(var(--slide-pad-x) + 80px);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--deck-primary);
+      z-index: 45;
+    }
+
+    .progress {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--deck-primary), var(--deck-secondary), var(--deck-success));
+      width: 10%;
+      transition: width 0.28s ease;
+      z-index: 50;
+    }
+
+    /* Speaker Notes Panel (press N) */
+    .notes-panel {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #202124;
+      color: #F8F9FA;
+      max-height: 32vh;
+      padding: 14px var(--slide-pad-x) 50px;
+      border-top: 2px solid var(--deck-primary);
+      box-shadow: 0 -12px 32px rgba(32, 33, 36, 0.35);
+      transform: translateY(105%);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 42;
+      overflow-y: auto;
+    }
+
+    .notes-panel.open {
+      transform: translateY(0);
+    }
+
+    .notes-panel .nh {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #8AB4F8;
+      margin-bottom: 6px;
+    }
+
+    #nt {
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: #E8EAED;
+      max-width: 110ch;
+    }
+
+    /* ==========================================================================
+       9. RESPONSIVE OVERRIDES & REDUCED MOTION
+       ========================================================================== */
+    @media (max-width: 860px) {
+      .grid-2, .grid-3, .grid-4, .grid-asym, .hero-pipeline {
+        grid-template-columns: 1fr;
+      }
+      .companion-tag, .deck-footer-hint {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.1s !important;
+      }
+    }
+
+    /* ---- 10. Secure-TDD additions: six-step hero, flow rows, engine tags ---- */
+    .hero-pipeline.six{grid-template-columns:repeat(6,minmax(0,1fr))}
+    .flow-row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;align-items:stretch}
+    .flow-step{background:var(--deck-surface);border:1px solid var(--deck-border);border-top:3px solid var(--deck-border-strong);border-radius:var(--deck-radius-sm);padding:8px 10px;display:flex;flex-direction:column;gap:3px}
+    .fs-num{font-family:var(--font-mono);font-size:.66rem;font-weight:700;color:var(--deck-primary);letter-spacing:.05em}
+    .fs-title{font-family:var(--font-sans-head);font-size:.84rem;font-weight:700;color:var(--deck-text);line-height:1.2}
+    .fs-desc{font-size:.74rem;color:var(--deck-text-muted);line-height:1.32}
+    .flow-step.wiz{border-top-color:var(--deck-secondary)} .flow-step.wiz .fs-num{color:var(--deck-secondary)}
+    .flow-step.cm{border-top-color:var(--deck-primary)} .flow-step.cm .fs-num{color:var(--deck-primary)}
+    .flow-step.ok{border-top-color:var(--deck-success)} .flow-step.ok .fs-num{color:var(--deck-success)}
+    .flow-step.warn{border-top-color:var(--deck-highlight)} .flow-step.warn .fs-num{color:var(--deck-highlight)}
+    .flow-step.bad{border-top-color:var(--deck-accent)} .flow-step.bad .fs-num{color:var(--deck-accent)}
+    .engine-tag{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:4px}
+    .engine-tag.wiz{background:var(--deck-secondary-soft);color:var(--deck-secondary)}
+    .engine-tag.cm{background:var(--deck-primary-soft);color:var(--deck-primary)}
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="top-bar" role="banner">
+    <div class="brand-cluster">
+      <span class="brand-tag">secure-tdd-agent-framework</span>
+      <span>Secure TDD with CodeMender &amp; Wiz</span>
+      <span class="companion-tag">· Companion to Vibe Coding Product Development Lifecycle</span>
+    </div>
+    <div class="top-controls" role="group" aria-label="Presentation Controls">
+      <button class="theme-btn" id="notes-toggle-btn" onclick="toggleNotes()" title="Toggle Speaker Notes (N)">Notes (N)</button>
+      <button class="theme-btn" id="presenter-open-btn" onclick="openPresenter()" title="Open Presenter View (P)">Presenter (P)</button>
+    </div>
+  </header>
+
+  <!-- Main Slide Deck -->
+  <main class="deck" id="deck-root">
+
+    <!-- ======================================================================
+         SLIDE 0: HERO
+         ====================================================================== -->
+    <div class="s title-slide active" data-idx="0" data-title="Secure TDD with CodeMender &amp; Wiz" data-notes="Welcome. Right alongside the Product Development Lifecycle session on &quot;vibe coding&quot; product ideas from prompt to prototype, we need to answer one engineering question: <strong>how do we move at vibe-coding speed without shipping vibe-coded vulnerabilities?</strong> The answer in this deck is the open-source <code>secure-tdd-agent-framework</code>: a test-first inner loop for AI coding agents, backed by exactly two security engines—<strong>Wiz Code</strong> for fast deterministic scanning and <strong>CodeMender</strong> for semantic find → verify → fix—and enforced twice: once by a local git security-gate hook, and again by the CI pipeline. Click any card to jump straight to that part.">
+      <div class="slide-inner">
+        <div class="eyebrow-row">
+          <span class="step-badge">Secure TDD · Wiz Code + CodeMender · Shift-Left Agentic Security</span>
+          <span class="skill-path-pill">github.com/h3xar0n/secure-tdd-agent-framework</span>
+        </div>
+
+        <h1>Secure TDD with CodeMender &amp; Wiz</h1>
+        <p class="sub">
+          Shift security left to the moment code is written. The <strong>Secure TDD Agent Framework</strong> gives AI coding agents a RED → GREEN → REFACTOR inner loop with living STRIDE threat models, then enforces it with two engines—<span class="engine-tag wiz">Wiz Code</span> for deterministic SCA / secrets / IaC / image scanning and <span class="engine-tag cm">CodeMender</span> for semantic <em>find → verify → fix</em>—at the git hook and again in CI.
+        </p>
+
+        <div class="hero-pipeline six" role="navigation" aria-label="Deck Sections">
+          <button class="stage-pill-card" onclick="show(3)">
+            <span class="step-num">PHASE A · PLAN</span>
+            <span class="persona-name">Threat Model</span>
+            <span class="scope-label">STRIDE boundaries + functional acceptance criteria</span>
+          </button>
+          <button class="stage-pill-card" onclick="show(4)">
+            <span class="step-num">PHASE B · RED</span>
+            <span class="persona-name">Security Tests First</span>
+            <span class="scope-label">Functional + boundary tests that fail for the right reason</span>
+          </button>
+          <button class="stage-pill-card" onclick="show(5)">
+            <span class="step-num">PHASE C · GREEN</span>
+            <span class="persona-name">Defensive Code</span>
+            <span class="scope-label">Minimal implementation on approved safe helpers</span>
+          </button>
+          <button class="stage-pill-card" onclick="show(6)">
+            <span class="step-num">PHASE D · REFACTOR</span>
+            <span class="persona-name">Scan &amp; Evolve</span>
+            <span class="scope-label">Wiz + CodeMender local scans, CONTEXT.md, SKILL.md</span>
+          </button>
+          <button class="stage-pill-card" onclick="show(9)">
+            <span class="step-num">GIT HOOK</span>
+            <span class="persona-name">Security Gate</span>
+            <span class="scope-label">Stage 1 Wiz → Stage 2 CodeMender → cm verify → HITL</span>
+          </button>
+          <button class="stage-pill-card" onclick="show(10)">
+            <span class="step-num">CI PIPELINE</span>
+            <span class="persona-name">Cloud Build</span>
+            <span class="scope-label">Same engines, same policies, auto-remediation PRs</span>
+          </button>
+        </div>
+
+        <div class="callout-bar">
+          <span><strong>Click any card above</strong> or press <code>→</code> / <code>Space</code> to walk the loop. Press <code>N</code> for speaker notes.</span>
+          <span>Jump to <a href="#qr" onclick="event.preventDefault(); show(11);" style="color: var(--deck-primary); font-weight: 700;">Slide 12: Repo QR Code →</a></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SLIDE 1: AGENTIC SECURITY LANDSCAPE
+         ====================================================================== -->
+    <div class="s" data-idx="1" data-title="Where This Guide Fits: Four Layers of Agentic Security" data-notes="Before the details, zoom out. Security agents now operate at four layers between a developer's first keystroke and production. <strong>Layer 1</strong> is the local Antigravity IDE workspace—that is this guide and the Secure TDD framework. <strong>Layer 2</strong> puts reviewer agents on Pull Requests to catch architectural regressions linters miss. <strong>Layer 3</strong> is pipeline defense and auto-remediation, where <strong>CodeMender</strong> and <strong>Wiz Code</strong> watch CI/CD and telemetry and open validated patch PRs. <strong>Layer 4</strong> is autonomous red teaming—<strong>AVDH</strong> and <strong>Wiz Red Agent</strong> continuously pen-test pre-production. The key message: we use the same two engines at Layer 1 and Layer 3, so findings are consistent from the laptop to the pipeline.">
+      <div class="slide-inner">
+        <div class="eyebrow-row">
+          <span class="step-badge">Agentic Security Landscape · Four Enforcement Layers</span>
+          <span class="skill-path-pill">Local IDE → Pull Request → CI/CD Pipeline → Pre-Production</span>
+        </div>
+
+        <h2>Where This Guide Fits: Four Layers of Agentic Security</h2>
+        <p class="sub">
+          Security agents now operate at every stage between a developer's first keystroke and production. This deck governs <strong>Layer 1</strong>—and shows how the same two engines carry the policy into <strong>Layer 3</strong>.
+        </p>
+
+        <div class="grid-4">
+          <div class="card card-bone layer-card layer-active accent-top-init">
+            <span class="scope-badge">★ Scope of this guide</span>
+            <span class="layer-index">01</span>
+            <span class="layer-stage">Local Antigravity IDE Workspace</span>
+            <h3>Local Agentic Development</h3>
+            <p>Governs the developer's local Antigravity IDE workspace, shifting security left to the point of code inception via role-based persona skills, TDD enforcement, and pre-commit remediation loops.</p>
+            <div class="ext-links">
+              <span class="ext-link">Plan → Red → Green → Refactor</span>
+              <span class="ext-link">Wiz Stage 1 · CodeMender Stage 2</span>
+            </div>
+          </div>
+
+          <div class="card layer-card accent-top-plan">
+            <span class="layer-index">02</span>
+            <span class="layer-stage">Pull Request Processes</span>
+            <h3>Agentic Code Evaluation in PRs</h3>
+            <p>Autonomous reviewer agents analyze incoming Pull Requests against organizational security architecture guidelines, detecting subtle architectural regressions that bypass static linters.</p>
+            <div class="ext-links">
+              <span class="ext-link">Architecture-aware PR reviewers</span>
+            </div>
+          </div>
+
+          <div class="card layer-card accent-top-impl">
+            <span class="layer-index">03</span>
+            <span class="layer-stage">CI/CD Pipelines &amp; Security Telemetry</span>
+            <h3>Agentic Pipeline Defense &amp; Auto-Remediation</h3>
+            <p>Dedicated remediation agents monitor CI/CD pipelines and security telemetry, automatically generating and validating security patch pull requests to resolve detected vulnerabilities without human delay—CodeMender's <em>find → verify → fix</em> loop in the pipeline.</p>
+            <div class="ext-links">
+              <a class="ext-link" href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/agents/codemender" target="_blank" rel="noopener noreferrer">CodeMender docs ↗</a>
+              <a class="ext-link" href="https://www.wiz.io/platform/wiz-code" target="_blank" rel="noopener noreferrer">Wiz Code ↗</a>
+            </div>
+          </div>
+
+          <div class="card layer-card accent-top-tdd">
+            <span class="layer-index">04</span>
+            <span class="layer-stage">Pre-Production Environments</span>
+            <h3>Autonomous Agentic Red Teaming</h3>
+            <p>Specialized offensive agents continuously execute automated penetration testing, multi-step adversarial fuzzing, and exploit simulation on pre-production environments to identify dynamic vulnerabilities before deployment.</p>
+            <div class="ext-links">
+              <a class="ext-link" href="https://cloud.google.com/blog/topics/threat-intelligence/staying-ahead-of-adversarial-ai-through-agentic-source-code-review" target="_blank" rel="noopener noreferrer">AVDH ↗</a>
+              <a class="ext-link" href="https://www.wiz.io/blog/introducing-the-wiz-red-agent" target="_blank" rel="noopener noreferrer">Wiz Red Agent ↗</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout-bar">
+          <span><strong>Why start local?</strong> Reviewing only in CI means delayed discovery, context-switching tax, and compounding debt from unguarded agents. Every downstream layer is cheaper when Layer 1 never lets the vulnerability get written.</span>
+          <span><strong>Next:</strong> the inner loop and its skills →</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SLIDE 2: THE SECURE TDD INNER LOOP & SKILLS MATRIX
+         ====================================================================== -->
+    <div class="s" data-idx="2" data-title="The Secure TDD Inner Loop &amp; Its Six Skills" data-notes="Here is the whole framework on one page. Four phases—<strong>Plan, Red, Green, Refactor &amp; Evolve</strong>—each driven by a self-contained <code>SKILL.md</code> under <code>.agents/skills/</code>. The table maps each phase to its skill, to the equivalent security persona from the <code>secured-sdlc</code> plugin for anyone who saw the earlier material, to the matching stage of the Vibe Coding product lifecycle, and to the living artifact it produces. Notice there is no database anywhere: all state is Markdown—<code>CONTEXT.md</code>, <code>threat_model.md</code>—and an append-only <code>.security-gate/</code> log. Click any row to jump to that phase.">
+      <div class="slide-inner">
+        <div class="eyebrow-row">
+          <span class="step-badge">Framework Overview · Plan → Red → Green → Refactor &amp; Evolve</span>
+          <span class="skill-path-pill">.agents/rules/secure_tdd_workflow.md · trigger: always_on</span>
+        </div>
+
+        <h2>The Secure TDD Inner Loop &amp; Its Six Skills</h2>
+
+        <div class="flow-row">
+          <div class="flow-step">
+            <span class="fs-num">1 · PLAN</span>
+            <span class="fs-title">Ingest CONTEXT.md · Scope · STRIDE</span>
+            <span class="fs-desc">Functional specs + security boundaries written down before code</span>
+          </div>
+          <div class="flow-step bad">
+            <span class="fs-num">2 · RED</span>
+            <span class="fs-title">Functional + Boundary Tests</span>
+            <span class="fs-desc">Happy paths, edge cases, 400/401/403 rejections—confirmed failing</span>
+          </div>
+          <div class="flow-step ok">
+            <span class="fs-num">3 · GREEN</span>
+            <span class="fs-title">Clean Defensive Code</span>
+            <span class="fs-desc">Minimal implementation that satisfies every RED test</span>
+          </div>
+          <div class="flow-step warn">
+            <span class="fs-num">4 · REFACTOR &amp; EVOLVE</span>
+            <span class="fs-title">Scan · Review · Learn</span>
+            <span class="fs-desc">Wiz + CodeMender scans, 100% regression, update CONTEXT.md &amp; SKILL.md</span>
+          </div>
+        </div>
+
+        <div class="matrix-table-wrap">
+          <table class="matrix-table" aria-label="Phases, skills, personas and artifacts">
+            <thead>
+              <tr>
+                <th>Phase</th>
+                <th>Core Skill (<code>.agents/skills/</code>)</th>
+                <th>≈ secured-sdlc Persona</th>
+                <th>Vibe Coding PDL Stage</th>
+                <th>Living Artifact / Gate</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr onclick="show(3)" title="Phase A">
+                <td><span class="step-badge badge-plan">A · Plan</span></td>
+                <td><code>threat_model_assessor</code> · <code>history_context_seeder</code></td>
+                <td><span class="persona-cell">🏛️ Security Architect</span></td>
+                <td>PRD &amp; user flows</td>
+                <td><code>threat_model.md</code>, <code>CONTEXT.md</code></td>
+              </tr>
+              <tr onclick="show(4)" title="Phase B">
+                <td><span class="step-badge badge-tdd">B · Red</span></td>
+                <td><code>security_test_writer</code></td>
+                <td><span class="persona-cell">🧪 Security Tester</span></td>
+                <td>Feature spec &amp; acceptance criteria</td>
+                <td><code>tests/</code> — failing functional + boundary tests</td>
+              </tr>
+              <tr onclick="show(5)" title="Phase C">
+                <td><span class="step-badge badge-ver">C · Green</span></td>
+                <td><code>defensive_developer</code></td>
+                <td><span class="persona-cell">🔐 AppSec Engineer</span></td>
+                <td>Rapid AI code generation</td>
+                <td>Minimal code on approved helpers (<code>utils/security.py</code>)</td>
+              </tr>
+              <tr onclick="show(6)" title="Phase D">
+                <td><span class="step-badge badge-init">D · Refactor &amp; Evolve</span></td>
+                <td><code>local_refactor_scanner</code> · <code>skill_evolution_updater</code></td>
+                <td><span class="persona-cell">🔍 Security Reviewer</span></td>
+                <td>Pre-launch polish</td>
+                <td><span class="engine-tag wiz">Wiz</span> <span class="engine-tag cm">CodeMender</span> scans · <code>CONTEXT.md §4</code></td>
+              </tr>
+              <tr onclick="show(9)" title="Gate &amp; Pipeline">
+                <td><span class="step-badge badge-impl">Gate · CI</span></td>
+                <td><code>security_gate_hook.sh</code> · <code>cloudbuild.yaml</code></td>
+                <td><span class="persona-cell">🛡️ DevSecOps Specialist</span></td>
+                <td>Ship</td>
+                <td><code>.security-gate/</code> audit log · tested patch PRs</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout-bar">
+          <span><strong>Zero-database transparency:</strong> all architectural state lives beside the code in human-readable Markdown and append-only logs. Skills are portable YAML-frontmatter <code>SKILL.md</code> files—identical across Antigravity and Claude Code.</span>
+          <span><strong>Tip:</strong> click any row.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SLIDE 3: PHASE A — PLAN / THREAT MODEL
+         ====================================================================== -->
+    <div class="s" data-idx="3" data-title="Phase A · Plan — threat_model_assessor" data-notes="Phase A is where a vibe-coded idea becomes a scoped, threat-modeled feature. The <code>threat_model_assessor</code> skill first reads <code>CONTEXT.md</code> to learn the existing trust boundaries, data flows and the <em>approved helpers</em> it must reuse. For a legacy repo with no context yet, <code>history_context_seeder</code> bootstraps it from git history. It then decomposes the feature into functional deliverables and walks STRIDE—Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege—and writes or updates <code>threat_model.md</code> at the workspace root with <strong>both</strong> functional and security acceptance criteria. Those criteria become the tests in Phase B. The repo dogfoods this: its own <code>threat_model.md</code> models the pre-push gate.">
+      <div class="slide-inner">
+        <div class="eyebrow-row">
+          <span class="step-badge badge-plan">Phase A · Plan · Functional Scoping &amp; Threat Modeling</span>
+          <span class="skill-path-pill">.agents/skills/threat_model_assessor/SKILL.md</span>
+        </div>
+
+        <h2>Phase A — Plan: Living STRIDE Threat Model Before Any Code</h2>
+        <p class="sub">
+          Features are planned with functional user stories <strong>and</strong> STRIDE boundary constraints in the same document, so security acceptance criteria exist before the first test is written.
+        </p>
+
+        <div class="grid-asym">
+          <div class="grid-2">
+            <div class="card accent-top-plan">
+              <span class="card-kicker">01 · Ingest Context</span>
+              <h3>Read <code>CONTEXT.md</code> First</h3>
+              <ul class="clean-list">
+                <li>Identifies existing trust boundaries, data flows, and <strong>approved security helpers</strong> the agent must reuse.</li>
+                <li><code>history_context_seeder</code> bootstraps <code>CONTEXT.md</code> for legacy repos from commit history.</li>
+              </ul>
+            </div>
+            <div class="card accent-top-plan">
+              <span class="card-kicker">02 · Decompose &amp; Model</span>
+              <h3>Functional Deliverables × STRIDE</h3>
+              <ul class="clean-list">
+                <li>Splits the feature into verifiable deliverables.</li>
+                <li>Evaluates <strong>S</strong>poofing · <strong>T</strong>ampering · <strong>R</strong>epudiation · <strong>I</strong>nfo Disclosure · <strong>D</strong>oS · <strong>E</strong>levation for each boundary.</li>
+              </ul>
+            </div>
+            <div class="card accent-top-plan">
+              <span class="card-kicker">03 · Emit Acceptance Criteria</span>
+              <h3>Write <code>threat_model.md</code></h3>
+              <ul class="clean-list">
+                <li>Workspace-root living document with <strong>Functional</strong> and <strong>Security</strong> acceptance criteria.</li>
+                <li>Every criterion is phrased as an observable HTTP/API outcome—so Phase B can assert it.</li>
+              </ul>
+            </div>
+            <div class="card card-bone accent-top-plan">
+              <span class="card-kicker">Dogfooded in the Repo</span>
+              <h3>The Framework Models Itself</h3>
+              <p style="font-size: var(--body-size);">The repo's own <code>threat_model.md</code> models the pre-push gate's trust boundaries, and <code>tests/</code> + <code>.agents/tests/</code> were written test-first against it—a working exemplar you can open today.</p>
+            </div>
+          </div>
+
+          <div class="card" style="justify-content: space-between;">
+            <div>
+              <span class="card-kicker">Living Artifact</span>
+              <h3 style="margin-top: 4px;"><code>threat_model.md</code> (excerpt)</h3>
+            </div>
+            <pre class="code-box"><code><span class="cm">## Feature: Invoice export (sample_app)</span>
+<span class="kw">### Functional Acceptance</span>
+- GET /v1/invoices/{id} as owner      <span class="st">→ 200 + JSON</span>
+- POST /v1/invoices/{id}/export        <span class="st">→ 302 to signed URL</span>
+
+<span class="kw">### STRIDE Boundaries (Security Acceptance)</span>
+- [I] Cross-tenant read (BOLA)         <span class="er">→ 403 / 404</span>
+- [T] ?file=../../etc/passwd traversal <span class="er">→ 400</span> (canonical path)
+- [S] Missing / expired JWT            <span class="er">→ 401</span>
+- [T] Open redirect on ?next=          <span class="er">→ 400</span> (allow-list)
+- [E] Standard user calls /admin/*     <span class="er">→ 403</span>
+
+<span class="kw">### Approved Helpers (from CONTEXT.md)</span>
+- utils/security.py: safe_path(), safe_redirect(), q()</code></pre>
+            <div class="callout-bar">
+              <span><strong>Exit criterion:</strong> <em>threat_model.md</em> updated and every boundary expressed as a status-code assertion.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SLIDE 4: PHASE B — RED / SECURITY TEST WRITER
+         ====================================================================== -->
+    <div class="s" data-idx="4" data-title="Phase B · Red — security_test_writer" data-notes="Phase B is test-first, and it is deliberately <em>holistic</em>: the <code>security_test_writer</code> skill writes functional acceptance tests, edge-case tests, and security boundary tests in the same suite. That matters because an isolated security patch that breaks a functional contract is itself a production incident—co-verification is what keeps security from destabilising the system. The skill follows three verification pillars: assert on observable HTTP/API outcomes and status codes, keep tests strictly isolated, and prefer real local integration instances over fragile mocks. Finally it runs the suite and confirms the tests fail <strong>for the expected reason</strong>—that is the RED state, and nothing moves to Phase C without it.">
+      <div class="slide-inner">
+        <div class="eyebrow-row">
+          <span class="step-badge badge-tdd">Phase B · Red · Functional + Security Test-First</span>
+          <span class="skill-path-pill">.agents/skills/security_test_writer/SKILL.md</span>
+        </div>
+
+        <h2>Phase B — Red: Functional and Boundary Tests That Fail First</h2>
+        <p class="sub">
+          One suite asserts both <strong>functional outcomes</strong> (200 / 302, correct payloads) and <strong>defensive boundaries</strong> (400 / 401 / 403, validation rejections)—then runs and proves it fails for the right reason.
+        </p>
+
+        <div class="grid-asym">
+          <div class="grid-2">
+            <div class="card accent-top-tdd">
+              <span class="card-kicker">Pillar 1 · Behavior-Driven Outcomes</span>
+              <h3>Assert on Observable Contracts</h3>
+              <ul class="clean-list">
+                <li>HTTP status codes and response shapes—never on internals.</li>
+                <li>Functional: <code>200</code>/<code>302</code>. Boundary: <code>400</code>/<code>401</code>/<code>403</code>/<code>404</code>.</li>
+              </ul>
+            </div>
+            <div class="card accent-top-tdd">
+              <span class="card-kicker">Pillar 2 · Strict Isolation</span>
+              <h3>Fresh Context Every Test</h3>
+              <ul class="clean-list">
+                <li>New app context and transaction rollback per test.</li>
+                <li>No order-dependent state; deterministic RED → GREEN.</li>
+              </ul>
+            </div>
+            <div class="card accent-top-tdd">
+              <span class="card-kicker">Pillar 3 · Integration over Mocking</span>
+              <h3>Real Local Instances, Not Fakes</h3>
+              <ul class="clean-list">
+                <li>Local DB / service instances instead of superficial mocks that hide injection paths.</li>
+                <li>Mocks only where the boundary is external and documented in <code>CONTEXT.md</code>.</li>
+              </ul>
+            </div>
+            <div class="card card-bone accent-top-tdd">
+              <span class="card-kicker">Why Co-Verification</span>
+              <h3>Security Is Part of Quality</h3>
+              <p style="font-size: var(--body-size);">An out-of-band security patch that breaks an API contract is a production outage. Codifying boundaries <em>alongside</em> happy paths means every fix is regression-checked against business behavior.</p>
+            </div>
+          </div>
+
+          <div class="card" style="justify-content: space-between;">
+            <div>
+              <span class="card-kicker">RED Assertion (pytest)</span>
+              <h3 style="margin-top: 4px;"><code>tests/test_sample_app.py</code></h3>
+            </div>
+            <pre class="code-box"><code><span class="kw">def</span> test_owner_can_read_invoice(client, owner_token):
+    r = client.get(<span class="st">"/v1/invoices/inv_1"</span>, headers=auth(owner_token))
+    <span class="kw">assert</span> r.status_code == 200          <span class="cm"># functional</span>
+
+<span class="kw">def</span> test_cross_tenant_read_is_denied(client, tenant_b_token):
+    r = client.get(<span class="st">"/v1/invoices/inv_1"</span>, headers=auth(tenant_b_token))
+    <span class="kw">assert</span> r.status_code <span class="kw">in</span> (403, 404)  <span class="cm"># [I] BOLA</span>
+
+<span class="kw">def</span> test_path_traversal_rejected(client, owner_token):
+    r = client.get(<span class="st">"/v1/export?file=../../etc/passwd"</span>, headers=auth(owner_token))
+    <span class="kw">assert</span> r.status_code == 400          <span class="cm"># [T] canonical path</span>
+
+<span class="kw">def</span> test_open_redirect_rejected(client):
+    r = client.get(<span class="st">"/login?next=https://evil.example"</span>)
+    <span class="kw">assert</span> r.status_code == 400          <span class="cm"># [T] allow-list</span></code></pre>
+            <div class="callout-bar">
+              <span><strong>Exit criterion:</strong> <code>pytest tests/</code> runs and <span class="er" style="color: var(--deck-accent); font-weight: 700;">fails for the expected reason</span>. Only then → Phase C.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SLIDE 5: PHASE C — GREEN / DEFENSIVE DEVELOPER
+         ====================================================================== -->
+    <div class="s" data-idx="5" data-title="Phase C · Green — defensive_developer" data-notes="Phase C is where the agent finally writes production code—and only the <em>minimal</em> code needed to turn the RED suite green. The <code>defensive_developer</code> skill follows three defensive pillars: strict input validation with typed schemas and allow-lists rather than fragile regex; explicit authorization—verify caller identity and permission before any logic runs; and least privilege with safe sinks—parameterized queries, canonical path checks, minimal returned payloads. Crucially it reuses the <strong>approved helpers</strong> from <code>CONTEXT.md</code> such as <code>sample_app/utils/security.py</code> instead of re-inventing them. Then it re-runs the suite until everything is GREEN.">
+      <div class="slide-inner">
+        <div class="eyebrow-row">
+          <span class="step-badge badge-ver">Phase C · Green · Clean Defensive Implementation</span>
+          <span class="skill-path-pill">.agents/skills/defensive_developer/SKILL.md</span>
+        </div>
+
+        <h2>Phase C — Green: Minimal Code on Approved Safe Helpers</h2>
+        <p class="sub">
+          Author the smallest, cleanest production change that satisfies every failing test—using the project's approved helpers rather than hand-rolled security logic.
+        </p>
+
+        <div class="grid-asym">
+          <div class="grid-2">
+            <div class="card accent-top-ver">
+              <span class="card-kicker">Pillar 1 · Strict Input Validation</span>
+              <h3>Schemas &amp; Allow-Lists</h3>
+              <ul class="clean-list">
+                <li>Type-safe structured schemas (<code>pydantic</code>, <code>extra="forbid"</code>) over fragile regex.</li>
+                <li>Allow-list redirect hosts, file roots, enum values.</li>
+              </ul>
+            </div>
+            <div class="card accent-top-ver">
+              <span class="card-kicker">Pillar 2 · Explicit Authorization</span>
+              <h3>Identity Before Logic</h3>
+              <ul class="clean-list">
+                <li>Verify caller identity and permission <em>before</em> executing the handler body.</li>
+                <li>Tenant / owner checks live in the data-access signature, not the view.</li>
+              </ul>
+            </div>
+            <div class="card accent-top-ver">
+              <span class="card-kicker">Pillar 3 · Least Privilege &amp; Safe Sinks</span>
+              <h3>Parameterize Everything</h3>
+              <ul class="clean-list">
+                <li>Parameterized SQL, canonical path checking, no shell strings.</li>
+                <li>Return the minimum payload the contract requires.</li>
+              </ul>
+            </div>
+            <div class="card card-bone accent-top-ver">
+              <span class="card-kicker">Reuse, Don't Re-Invent</span>
+              <h3>Approved Helpers from <code>CONTEXT.md</code></h3>
+              <p style="font-size: var(--body-size);"><code>sample_app/utils/security.py</code> ships <code>safe_path()</code>, <code>safe_redirect()</code> and parameterized query helpers. Agents are instructed to call these—so one audited implementation guards every route.</p>
+            </div>
+          </div>
+
+          <div class="card" style="justify-content: space-between;">
+            <div>
+              <span class="card-kicker">GREEN Implementation (Flask)</span>
+              <h3 style="margin-top: 4px;"><code>sample_app/app.py</code></h3>
+            </div>
+            <pre class="code-box"><code><span class="kw">from</span> utils.security <span class="kw">import</span> safe_path, safe_redirect, q
+
+<span class="kw">class</span> ExportQuery(BaseModel):
+    model_config = ConfigDict(extra=<span class="st">"forbid"</span>)       <span class="cm"># no mass assignment</span>
+    file: Annotated[str, StringConstraints(max_length=128)]
+
+@app.get(<span class="st">"/v1/invoices/&lt;inv_id&gt;"</span>)
+@requires_auth                                        <span class="cm"># [S] 401 before body runs</span>
+<span class="kw">def</span> get_invoice(inv_id, principal):
+    row = q(<span class="st">"SELECT id,total FROM invoices "</span>
+            <span class="st">"WHERE id=? AND tenant_id=? AND owner_id=?"</span>,
+            (inv_id, principal.tenant_id, principal.user_id))  <span class="cm"># [I] BOLA</span>
+    <span class="kw">return</span> (jsonify(row), 200) <span class="kw">if</span> row <span class="kw">else</span> (<span class="st">""</span>, 404)
+
+@app.get(<span class="st">"/v1/export"</span>)
+@requires_auth
+<span class="kw">def</span> export(principal):
+    p = safe_path(EXPORT_ROOT, ExportQuery(**request.args).file)  <span class="cm"># [T] 400</span>
+    <span class="kw">return</span> safe_redirect(signed_url(p), allow=ALLOWED_HOSTS)      <span class="cm"># [T] 302|400</span></code></pre>
+            <div class="callout-bar">
+              <span><strong>Exit criterion:</strong> <code>pytest tests/</code> is <span style="color: var(--deck-success); font-weight: 700;">100% GREEN</span>—functional and boundary tests together.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SLIDE 6: PHASE D — REFACTOR & EVOLVE
+         ====================================================================== -->
+    <div class="s" data-idx="6" data-title="Phase D · Refactor &amp; Evolve — local_refactor_scanner + skill_evolution_updater" data-notes="Phase D closes the loop and this is where our two engines first appear in the developer's inner loop. <code>local_refactor_scanner</code> cleans up the code, demands a 100% regression pass, and then runs fast deterministic checks on the <em>changed files</em>—that's <strong>Wiz Code</strong>: <code>wizcli dir scan</code> for SCA, secrets and IaC—followed by a semantic pass with <strong>CodeMender</strong>: <code>cm find</code> on the touched paths, plus a guided AI review of architectural boundaries. Then <code>skill_evolution_updater</code> captures the lesson: systemic conventions are appended to <code>CONTEXT.md</code> section 4, and if a recurring anti-pattern was found it proposes an update to the relevant <code>SKILL.md</code>. For solo developers the agent can self-heal skills directly; for teams, it should open a PR against the shared skill registry rather than mutate it.">
+      <div class="slide-inner">
+        <div class="eyebrow-row">
+          <span class="step-badge badge-init">Phase D · Refactor &amp; Evolve · Quality, Local Scans, Continuous Learning</span>
+          <span class="skill-path-pill">.agents/skills/local_refactor_scanner · skill_evolution_updater</span>
+        </div>
+
+        <h2>Phase D — Refactor &amp; Evolve: Scan Locally, Learn Permanently</h2>
+        <p class="sub">
+          Clean the code, prove 100% regression, run <span class="engine-tag wiz">Wiz Code</span> and <span class="engine-tag cm">CodeMender</span> on the changed files, then write the lesson into <code>CONTEXT.md</code> and <code>SKILL.md</code> so the whole agent fleet inherits it.
+        </p>
+
+        <div class="grid-4">
+          <div class="card accent-top-init">
+            <span class="card-kicker">01 · Code Quality</span>
+            <h3>Refactor &amp; 100% Regression</h3>
+            <ul class="clean-list">
+              <li>Eliminate duplication, improve modularity.</li>
+              <li>Full suite must stay green—no silent contract changes.</li>
+            </ul>
+          </div>
+          <div class="card accent-top-impl">
+            <span class="card-kicker">02 · Deterministic Scan <span class="engine-tag wiz">Wiz</span></span>
+            <h3>Changed-File Checks</h3>
+            <ul class="clean-list">
+              <li><code>wizcli dir scan --path .</code> → vulnerable / malicious deps, hard-coded secrets, IaC misconfig.</li>
+              <li>Policy pass/fail is identical to CI—no surprises later.</li>
+            </ul>
+          </div>
+          <div class="card accent-top-plan">
+            <span class="card-kicker">03 · Semantic Scan <span class="engine-tag cm">CodeMender</span></span>
+            <h3>Find → Verify on Touched Paths</h3>
+            <ul class="clean-list">
+              <li><code>cm find ./changed --compact</code> for deep logic flaws linters miss.</li>
+              <li>Guided AI review confirms architectural boundaries from <code>threat_model.md</code> held.</li>
+            </ul>
+          </div>
+          <div class="card accent-top-tdd">
+            <span class="card-kicker">04 · Evolve</span>
+            <h3>CONTEXT.md §4 &amp; SKILL.md</h3>
+            <ul class="clean-list">
+              <li>Append approved helpers &amp; conventions under <em>Auto-Evolved Conventions</em>.</li>
+              <li>Recurring anti-pattern → propose <code>SKILL.md</code> update (PR for teams, direct edit for solo).</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="grid-asym">
+          <div class="card">
+            <span class="card-kicker">Local Scan Commands (changed files only)</span>
+            <pre class="code-box" style="margin-top: 4px;"><code><span class="cm"># Stage 1 — Wiz Code: deterministic SCA · secrets · IaC on the working tree</span>
+wizcli dir scan --path . --policy <span class="st">"secure-tdd-code-policy"</span> --policy-hits-only
+
+<span class="cm"># Stage 2 — CodeMender: semantic find (+ verify on anything it flags)</span>
+cm find $(git diff --name-only origin/main...HEAD | xargs -n1 dirname | sort -u) \
+   --model <span class="st">${CODEMENDER_MODEL:-gemini-3.8-flash}</span> --compact
+
+<span class="cm"># Regression gate</span>
+pytest tests/ -q</code></pre>
+          </div>
+          <div class="card card-bone" style="justify-content: center;">
+            <span class="card-kicker">Governance of Skill Evolution</span>
+            <h3>Solo: self-heal · Teams: propose</h3>
+            <p style="font-size: var(--body-size);">Individual coding agents should <strong>not</strong> mutate a shared skill registry. In team settings the evolution phase emits PR proposals or ticket drafts for QA and security leads to review—the lesson still compounds, with a human in the loop.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SLIDE 7: ENGINE — CODEMENDER
+         ====================================================================== -->
+    <div class="s" data-idx="7" data-title="Engine 2 · CodeMender — Find, Verify, Fix" data-notes="Let's look at the engines themselves, starting with <strong>CodeMender</strong>—Google's AI code security agent on the Gemini Enterprise Agent Platform. It wraps a fine-tuned, DeepMind-engineered harness around Gemini to turn it into a specialist. Three verbs: <code>cm find</code> scans with an LLM guided by the agent and purpose-built tools—or imports findings from an external scanner such as Wiz; <code>cm verify</code> actually <em>builds the code and attempts to exploit the finding</em>, which is how it prioritises confirmed vulnerabilities and cuts false positives; <code>cm fix</code> generates and tests a language-appropriate patch. Architecturally it is a hosted multi-agent system plus a local CLI/daemon that runs commands inside a process-level sandbox. It never uploads the full repository—only targeted snippets, findings and patches—retains session data for at most seven days, gives no human access to customer data, and supports VPC Service Controls. Default model is Gemini 3.8 Flash, overridable with <code>--model</code>. It is in Public Preview with limited access.">
+      <div class="slide-inner">
+        <div class="eyebrow-row">
+          <span class="step-badge badge-plan">Engine 2 · Semantic Analysis &amp; Remediation · Gemini Enterprise Agent Platform</span>
+          <span class="skill-path-pill"><a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/agents/codemender" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">docs.cloud.google.com/…/agents/codemender ↗</a></span>
+        </div>
+
+        <h2><span class="engine-tag cm">CodeMender</span> — Find, Verify, Fix Deep Vulnerabilities</h2>
+        <p class="sub">
+          An AI code security agent that doesn't just flag issues: it <strong>builds and exploits</strong> each finding to prove it is real, then generates a <strong>tested patch</strong>. Used in Phase D locally, in Stage 2 of the gate hook, and in CI.
+        </p>
+
+        <div class="grid-asym">
+          <div style="display: flex; flex-direction: column; gap: var(--gap-md);">
+            <div class="grid-3">
+              <div class="card accent-top-plan">
+                <span class="card-kicker">1 · <code>cm find</code></span>
+                <h3>Find</h3>
+                <ul class="clean-list">
+                  <li>LLM guided by the agent + specialized security tools.</li>
+                  <li>Or import findings from external scanners (e.g. Wiz).</li>
+                </ul>
+              </div>
+              <div class="card accent-top-tdd">
+                <span class="card-kicker">2 · <code>cm verify</code></span>
+                <h3>Verify</h3>
+                <ul class="clean-list">
+                  <li>Builds the code and <strong>attempts to exploit</strong> the finding.</li>
+                  <li>Prioritizes confirmed issues; slashes false positives.</li>
+                </ul>
+              </div>
+              <div class="card accent-top-ver">
+                <span class="card-kicker">3 · <code>cm fix</code></span>
+                <h3>Fix</h3>
+                <ul class="clean-list">
+                  <li>Generates a patch idiomatic to the language.</li>
+                  <li>Tests it before proposing—fits the TDD loop.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="card card-bone">
+              <span class="card-kicker">Architecture &amp; Data Posture</span>
+              <div class="grid-2" style="gap: 8px;">
+                <ul class="clean-list">
+                  <li><strong>Agent:</strong> hosted multi-agent system (reasoning).</li>
+                  <li><strong>Client:</strong> local <code>cm</code> CLI + daemon executing in a process-level sandbox (compile, test, exploit).</li>
+                  <li><strong>Models:</strong> Gemini 3.8 Flash (default) … 3.5 Flash, 3.1 Pro Preview via <code>--model</code>.</li>
+                </ul>
+                <ul class="clean-list">
+                  <li>Never uploads the full repo—only targeted snippets, findings, patches, telemetry.</li>
+                  <li>7-day max retention · explicit delete · ephemeral findings.</li>
+                  <li>Zero human access · tenant isolation · <strong>VPC-SC</strong> support.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="justify-content: space-between;">
+            <div>
+              <span class="card-kicker">Install &amp; Initialize (from the repo README)</span>
+              <h3 style="margin-top: 4px;">Get <code>cm</code> on your PATH</h3>
+            </div>
+            <pre class="code-box"><code><span class="cm"># 1. Auth (ADC) — no keys on disk</span>
+gcloud auth application-default login
+
+<span class="cm"># 2. Download the CLI (Linux x86_64; darwin-arm64 also available)</span>
+gcloud artifacts generic download --project=cmoc-prod --location=us \
+  --repository=codemender-cli-production --package=cm --version=stable \
+  --name=cm-linux-amd64.zip --destination=./
+unzip cm-*.zip &amp;&amp; chmod +x cm &amp;&amp; sudo mv cm /usr/local/bin/cm
+
+<span class="cm"># 3. Initialize the project (and self-check the verify sandbox)</span>
+cm init
+cm init --verify
+
+<span class="cm"># 4. Repo-scoped config.yaml narrows the scan surface</span>
+<span class="kw">scan:</span>
+  <span class="kw">extensions:</span> { <span class="kw">include:</span> [<span class="st">.py</span>, <span class="st">.ts</span>, <span class="st">.tsx</span>, <span class="st">.go</span>] }
+  <span class="kw">exclude_dirs:</span> [<span class="st">node_modules</span>, <span class="st">vendor</span>, <span class="st">dist</span>, <span class="st">build</span>]</code></pre>
+            <div class="callout-bar">
+              <span><strong>Languages:</strong> C/C++, C#, Go, Java, JS/TS, Kotlin, Python, Ruby, Rust, PHP (+ any model-understood language via <code>scan.extensions</code>).</span>
+              <span><strong>Status:</strong> Public Preview · limited access · not for production use yet.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SLIDE 8: ENGINE — WIZ CODE
+         ====================================================================== -->
+    <div class="s" data-idx="8" data-title="Engine 1 · Wiz Code — Deterministic Scanning from IDE to Registry" data-notes="The other engine is <strong>Wiz Code</strong>, which plays the Stage 1 deterministic role. The <code>wizcli</code> binary runs the same policies on a laptop and in CI: <code>wizcli dir scan</code> covers software composition analysis, hard-coded secrets and IaC in one pass over a directory; <code>wizcli iac scan</code> targets Terraform and Kubernetes manifests; <code>wizcli docker scan</code> checks the built image, and <code>wizcli docker tag</code> links that image to the registry so Wiz can correlate it with what is actually running—Code-to-Cloud context. Policies are pass/fail, so the gate is unambiguous. Note that the upstream repo ships <code>engine_semgrep.sh</code> for Stage 1 today and lists Wiz Code as the designated alternative Stage 1 engine on its roadmap; the engine architecture in <code>.agents/lib/</code> is built so you drop in an <code>engine_wiz.sh</code>—which is exactly what this deck standardises on.">
+      <div class="slide-inner">
+        <div class="eyebrow-row">
+          <span class="step-badge badge-impl">Engine 1 · Deterministic Scanning · Code-to-Cloud Context</span>
+          <span class="skill-path-pill"><a href="https://www.wiz.io/platform/wiz-code" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">wiz.io/platform/wiz-code ↗</a></span>
+        </div>
+
+        <h2><span class="engine-tag wiz">Wiz Code</span> — Deterministic Policy Gates from IDE to Registry</h2>
+        <p class="sub">
+          Fast, repeatable, policy-as-code scanning with one CLI—identical results on the developer's machine, in the gate hook, and in CI—plus Security Graph context linking code to the cloud resources it ships to.
+        </p>
+
+        <div class="grid-4">
+          <div class="card accent-top-impl">
+            <span class="card-kicker">SCA</span>
+            <h3>Dependencies &amp; Lockfiles</h3>
+            <ul class="clean-list">
+              <li>Vulnerable and malicious packages, licence policy, SBOM.</li>
+              <li>Catches hallucinated / slopsquatted packages before install.</li>
+            </ul>
+          </div>
+          <div class="card accent-top-impl">
+            <span class="card-kicker">Secrets</span>
+            <h3>Hard-Coded Credentials</h3>
+            <ul class="clean-list">
+              <li>Keys, tokens, connection strings in source and config.</li>
+              <li>Blocks the classic vibe-coding <code>.env</code> commit.</li>
+            </ul>
+          </div>
+          <div class="card accent-top-impl">
+            <span class="card-kicker">IaC</span>
+            <h3>Terraform &amp; Kubernetes</h3>
+            <ul class="clean-list">
+              <li>Public buckets, wildcard IAM, open ingress, missing CMEK.</li>
+              <li>Least-privilege checks before <code>terraform apply</code>.</li>
+            </ul>
+          </div>
+          <div class="card accent-top-impl">
+            <span class="card-kicker">Containers</span>
+            <h3>Image Scan &amp; Registry Link</h3>
+            <ul class="clean-list">
+              <li>Base-image CVEs, OS packages, misconfig (root user, no digest pin).</li>
+              <li><code>docker tag</code> correlates image → running workload.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="grid-asym">
+          <div class="card">
+            <span class="card-kicker">The Same Four Commands — Locally and in CI</span>
+            <pre class="code-box" style="margin-top: 4px;"><code><span class="cm"># Auth: service-account client from Secret Manager (never in the repo)</span>
+wizcli auth --id <span class="st">"$WIZ_CLIENT_ID"</span> --secret <span class="st">"$WIZ_CLIENT_SECRET"</span>
+
+<span class="cm"># Stage 1 gate — SCA + secrets + IaC in one pass; non-zero exit on policy hit</span>
+wizcli dir scan    --path .        --policy <span class="st">"secure-tdd-code-policy"</span>  --policy-hits-only
+wizcli iac scan    --path infra/   --policy <span class="st">"secure-tdd-iac-policy"</span>
+
+<span class="cm"># After build — image gate, then link to the registry for runtime context</span>
+wizcli docker scan --image <span class="st">"$IMAGE@$DIGEST"</span> --policy <span class="st">"secure-tdd-image-policy"</span>
+wizcli docker tag  --image <span class="st">"$IMAGE@$DIGEST"</span></code></pre>
+          </div>
+          <div class="card card-bone" style="justify-content: center;">
+            <span class="card-kicker">Why Wiz for Stage 1</span>
+            <h3>Deterministic first, semantic second</h3>
+            <ul class="clean-list">
+              <li><strong>Fast &amp; repeatable</strong> — seconds, no LLM variance; ideal as the first gate.</li>
+              <li><strong>Policy-as-code</strong> — one policy set shared by hook and pipeline.</li>
+              <li><strong>Hands off to CodeMender</strong> — findings import into <code>cm find</code> for verify → fix.</li>
+              <li><strong>Repo note:</strong> upstream ships <code>engine_semgrep.sh</code>; Wiz Code is the designated Stage 1 alternative—drop in <code>.agents/lib/engine_wiz.sh</code>.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SLIDE 9: SECURITY GATE HOOK
+         ====================================================================== -->
+    <div class="s" data-idx="9" data-title="The Security Gate Hook — Stage 1 Wiz → Stage 2 CodeMender" data-notes="This is the enforcement point on the developer's machine. The framework registers a git hook via <code>.agents/hooks.json</code> that runs <code>security_gate_hook.sh</code>—pre-push by default; you can mount the same script as pre-commit if you want commit-time gating. It inspects the modified files, then runs <strong>Stage 1</strong>, the deterministic Wiz scan. If there are findings, it does not just fail: it enters a <strong>three-attempt TDD loop</strong>—add a reproducing boundary test, apply a minimal fix, run the full suite. Fixes and any unresolved findings are imported into <strong>Stage 2</strong>, the semantic CodeMender scan, which verifies the Stage 1 fixes and ingests the remainder; again up to three TDD attempts. If it passes, the hook auto-commits with a structured commit body and allows the push. If it still fails, it reverts the working tree and runs <code>cm verify</code>: conclusively not exploitable means an advisory is appended to the audit log and the push proceeds; a confirmed issue, or a verify crash, escalates to a human—and in a non-TTY context the push is denied. Scanner errors honour the <code>SECURITY_GATE_ALLOW_ON_ERROR</code> fail-open switch. Every outcome lands in the append-only <code>.security-gate/</code> log.">
+      <div class="slide-inner">
+        <div class="eyebrow-row">
+          <span class="step-badge badge-tdd">Local Enforcement · <code>.agents/hooks.json</code> → <code>security_gate_hook.sh</code></span>
+          <span class="skill-path-pill">pre-push by default · mount as pre-commit for commit-time gating</span>
+        </div>
+
+        <h2>The Security Gate Hook — Stage 1 <span class="engine-tag wiz">Wiz</span> → Stage 2 <span class="engine-tag cm">CodeMender</span> → <code>cm verify</code></h2>
+
+        <div class="flow-row">
+          <div class="flow-step">
+            <span class="fs-num">0 · INTERCEPT</span>
+            <span class="fs-title">git push → hook</span>
+            <span class="fs-desc">Inspect modified files in the push; detect engines on PATH</span>
+          </div>
+          <div class="flow-step wiz">
+            <span class="fs-num">1 · DETERMINISTIC</span>
+            <span class="fs-title">Wiz Code scan</span>
+            <span class="fs-desc"><code>wizcli dir scan</code> — SCA, secrets, IaC; autofixes where safe</span>
+          </div>
+          <div class="flow-step warn">
+            <span class="fs-num">1b · TDD LOOP ≤3</span>
+            <span class="fs-title">Add test → Fix → Run suite</span>
+            <span class="fs-desc">Fixed → import fix + context to Stage 2 · Fails → import finding</span>
+          </div>
+          <div class="flow-step cm">
+            <span class="fs-num">2 · SEMANTIC</span>
+            <span class="fs-title">CodeMender <code>cm find</code></span>
+            <span class="fs-desc">Verify imported fixes; ingest remaining findings with full context</span>
+          </div>
+          <div class="flow-step warn">
+            <span class="fs-num">2b · TDD LOOP ≤3</span>
+            <span class="fs-title">Add test → Fix → Run suite</span>
+            <span class="fs-desc">Passes → auto-commit &amp; allow · Fails → <code>git checkout .</code></span>
+          </div>
+          <div class="flow-step cm">
+            <span class="fs-num">3 · <code>cm verify</code></span>
+            <span class="fs-title">Exploit attempt</span>
+            <span class="fs-desc">Not exploitable → advisory + allow · Confirmed / crash → HITL (non-TTY: deny)</span>
+          </div>
+        </div>
+
+        <div class="grid-asym">
+          <div class="card">
+            <span class="card-kicker">Hook Registration &amp; Engine Modules (simplified)</span>
+            <pre class="code-box" style="margin-top: 4px;"><code><span class="cm"># .agents/hooks.json — universal hook config (Antigravity · Claude Code)</span>
+{ <span class="kw">"pre-push"</span>: [ { <span class="kw">"command"</span>: <span class="st">".agents/security_gate_hook.sh"</span> } ] }
+
+<span class="cm"># .agents/security_gate_hook.sh — modular entrypoint</span>
+<span class="kw">source</span> .agents/lib/gate_common.sh        <span class="cm"># severity ranking · audit log · notify</span>
+<span class="kw">source</span> .agents/lib/engine_wiz.sh         <span class="cm"># Stage 1 (deterministic)  — wizcli</span>
+<span class="kw">source</span> .agents/lib/engine_codemender.sh  <span class="cm"># Stage 2 (semantic)       — cm</span>
+
+<span class="kw">export</span> SECURITY_GATE_ALLOW_ON_ERROR=<span class="st">false</span>  <span class="cm"># fail-closed: scanner error ⇒ deny &amp; escalate</span>
+<span class="kw">export</span> CODEMENDER_MODEL=<span class="st">gemini-3.8-flash</span>   <span class="cm"># configurable, never hard-coded</span></code></pre>
+          </div>
+          <div class="grid-2">
+            <div class="card accent-top-tdd">
+              <span class="card-kicker">TDD, Not Blind Patching</span>
+              <h3>Every auto-fix is RED → GREEN</h3>
+              <ul class="clean-list">
+                <li>Reproducing boundary test added first and confirmed failing.</li>
+                <li>Minimal fix, then <strong>full-suite</strong> regression.</li>
+                <li>Structured commit body: threat boundary, fix, test evidence.</li>
+              </ul>
+            </div>
+            <div class="card accent-top-init">
+              <span class="card-kicker">Fail-Open Switch &amp; Audit</span>
+              <h3><code>SECURITY_GATE_ALLOW_ON_ERROR</code></h3>
+              <ul class="clean-list">
+                <li><code>false</code> → scanner error denies the push and escalates.</li>
+                <li><code>true</code> → log error, tag commit <code>unverified-scan</code>, proceed.</li>
+                <li>All outcomes → append-only <code>.security-gate/</code> log; 38 offline mock tests cover PASS · ADVISORY · ERROR · BLOCKED · FIXED.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SLIDE 10: CI PIPELINE
+         ====================================================================== -->
+    <div class="s" data-idx="10" data-title="CI Pipeline — Same Engines, Same Policies, Auto-Remediation PRs" data-notes="The pipeline is the Layer 3 backstop—and it runs the <em>same</em> two engines with the <em>same</em> policies, so a developer never sees a CI failure the hook would not have shown them. Cloud Build steps: run the functional-plus-security test suite; Wiz Code directory and IaC scans as blocking policy gates; build a digest-pinned image; Wiz image scan and registry tag; then CodeMender—<code>cm find</code> across the whole repository, <code>cm verify</code> to confirm exploitability, and <code>cm fix</code> to produce a tested patch that is opened as a pull request rather than pushed to main. Only if every gate is green does the deploy step run. Secrets come from Secret Manager, the model is a substitution variable, and the whole thing is a <code>cloudbuild.yaml</code> in the repo. A GitHub Actions equivalent is a straight translation.">
+      <div class="slide-inner">
+        <div class="eyebrow-row">
+          <span class="step-badge badge-impl">Layer 3 Backstop · Cloud Build · <code>cloudbuild.yaml</code></span>
+          <span class="skill-path-pill">Deterministic gates block · Semantic agent opens tested patch PRs</span>
+        </div>
+
+        <h2>CI Pipeline — Same Engines, Same Policies, Auto-Remediation PRs</h2>
+
+        <div class="flow-row">
+          <div class="flow-step ok">
+            <span class="fs-num">1 · TEST</span>
+            <span class="fs-title">pytest tests/</span>
+            <span class="fs-desc">Functional + boundary suite must be 100% green</span>
+          </div>
+          <div class="flow-step wiz">
+            <span class="fs-num">2 · WIZ DIR</span>
+            <span class="fs-title">SCA · secrets</span>
+            <span class="fs-desc">Blocking policy gate</span>
+          </div>
+          <div class="flow-step wiz">
+            <span class="fs-num">3 · WIZ IAC</span>
+            <span class="fs-title">Terraform / K8s</span>
+            <span class="fs-desc">Least-privilege &amp; exposure checks</span>
+          </div>
+          <div class="flow-step">
+            <span class="fs-num">4 · BUILD</span>
+            <span class="fs-title">Digest-pinned image</span>
+            <span class="fs-desc">Multi-stage, non-root, SHA-pinned base</span>
+          </div>
+          <div class="flow-step wiz">
+            <span class="fs-num">5 · WIZ IMAGE</span>
+            <span class="fs-title">docker scan + tag</span>
+            <span class="fs-desc">CVE gate; link to registry / runtime</span>
+          </div>
+          <div class="flow-step cm">
+            <span class="fs-num">6 · CODEMENDER</span>
+            <span class="fs-title">find → verify → fix</span>
+            <span class="fs-desc">Confirmed issues → tested patch → PR</span>
+          </div>
+          <div class="flow-step ok">
+            <span class="fs-num">7 · DEPLOY</span>
+            <span class="fs-title">Cloud Run</span>
+            <span class="fs-desc">Only when every gate is green</span>
+          </div>
+        </div>
+
+        <div class="grid-asym">
+          <div class="card">
+            <span class="card-kicker"><code>cloudbuild.yaml</code> (condensed)</span>
+            <pre class="code-box" style="margin-top: 4px;"><code><span class="kw">steps:</span>
+- { <span class="kw">id:</span> test,    <span class="kw">name:</span> python:3.12-slim, <span class="kw">entrypoint:</span> bash,
+    <span class="kw">args:</span> [-c, <span class="st">"pip install -r requirements.txt &amp;&amp; pytest tests/ -q"</span>] }
+- { <span class="kw">id:</span> wiz-dir, <span class="kw">name:</span> wiziocli.azurecr.io/wizcli:latest-amd64, <span class="kw">secretEnv:</span> [WIZ_ID, WIZ_SECRET],
+    <span class="kw">args:</span> [dir, scan, --path, ., --policy, <span class="st">secure-tdd-code-policy</span>] }
+- { <span class="kw">id:</span> wiz-iac, <span class="kw">name:</span> wiziocli.azurecr.io/wizcli:latest-amd64, <span class="kw">secretEnv:</span> [WIZ_ID, WIZ_SECRET],
+    <span class="kw">args:</span> [iac, scan, --path, infra/, --policy, <span class="st">secure-tdd-iac-policy</span>] }
+- { <span class="kw">id:</span> build,   <span class="kw">name:</span> gcr.io/cloud-builders/docker, <span class="kw">args:</span> [build, -t, <span class="st">$_IMAGE:$SHORT_SHA</span>, .] }
+- { <span class="kw">id:</span> wiz-img, <span class="kw">name:</span> wiziocli.azurecr.io/wizcli:latest-amd64, <span class="kw">secretEnv:</span> [WIZ_ID, WIZ_SECRET],
+    <span class="kw">args:</span> [docker, scan, --image, <span class="st">$_IMAGE:$SHORT_SHA</span>, --policy, <span class="st">secure-tdd-image-policy</span>] }
+- { <span class="kw">id:</span> codemender, <span class="kw">name:</span> <span class="st">$_CM_IMAGE</span>, <span class="kw">entrypoint:</span> bash, <span class="kw">args:</span> [-c,
+    <span class="st">"cm find . --model $_CODEMENDER_MODEL --compact &amp;&amp; cm verify &amp;&amp; cm fix \
+     &amp;&amp; git switch -c codemender/$SHORT_SHA &amp;&amp; git commit -am 'fix(security): CodeMender verified patch' \
+     &amp;&amp; gh pr create --fill --label security-autofix"</span>] }
+- { <span class="kw">id:</span> deploy,  <span class="kw">name:</span> gcr.io/google.com/cloudsdktool/cloud-sdk, <span class="kw">waitFor:</span> [test, wiz-dir, wiz-iac, wiz-img],
+    <span class="kw">args:</span> [gcloud, run, deploy, <span class="st">$_SERVICE</span>, --image, <span class="st">$_IMAGE:$SHORT_SHA</span>, --region, <span class="st">$_REGION</span>] }
+<span class="kw">substitutions:</span> { <span class="kw">_CODEMENDER_MODEL:</span> <span class="st">gemini-3.8-flash</span>, <span class="kw">_REGION:</span> <span class="st">us-central1</span> }
+<span class="kw">availableSecrets:</span> { <span class="kw">secretManager:</span> [ { <span class="kw">versionName:</span> <span class="st">projects/$PROJECT_ID/secrets/wiz-client-id/versions/latest</span>, <span class="kw">env:</span> WIZ_ID }, … ] }</code></pre>
+          </div>
+          <div class="grid-2">
+            <div class="card accent-top-impl">
+              <span class="card-kicker"><span class="engine-tag wiz">Wiz</span> = Blocking Gate</span>
+              <h3>Deterministic, policy-as-code</h3>
+              <ul class="clean-list">
+                <li>Non-zero exit on policy hit fails the build.</li>
+                <li>Same policy names as the hook → zero drift.</li>
+                <li>Image tag gives Code-to-Cloud lineage in Wiz.</li>
+              </ul>
+            </div>
+            <div class="card accent-top-plan">
+              <span class="card-kicker"><span class="engine-tag cm">CodeMender</span> = Remediation Agent</span>
+              <h3>Patch PRs, never direct pushes</h3>
+              <ul class="clean-list">
+                <li><code>cm verify</code> gates on exploitability first.</li>
+                <li>Tested patch lands as a labelled PR for Layer 2 review.</li>
+                <li>Secrets via Secret Manager; model via substitution.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SLIDE 11: GET THE REPO — QR CODE
+         ====================================================================== -->
+    <div class="s" data-idx="11" data-title="Get the Framework: secure-tdd-agent-framework" data-notes="Scan the QR code or open the link to grab the framework. The repo is the canonical upstream: six skills, the always-on workflow rule, the hook and engine modules, a Flask sample app with its test suite, and the living <code>CONTEXT.md</code> and <code>threat_model.md</code>. It automatically syncs two downstream distributions—<code>secure-tdd-antigravity</code> for Antigravity workspaces and <code>secure-tdd-claude-code</code> for Claude Code. Quick start is four lines: clone, run the ten app tests, run the offline hook tests, then enable the engines with <code>cm init --verify</code> and <code>wizcli auth</code>. Apache 2.0 licensed, and the README is honest that this is a demonstration of an approach—run agentic workflows only in isolated development environments.">
+      <div class="slide-inner">
+        <div class="eyebrow-row">
+          <span class="step-badge badge-ver">Open Source · Apache 2.0 · Canonical Upstream + Downstream Distributions</span>
+          <span class="skill-path-pill">h3xar0n/secure-tdd-agent-framework</span>
+        </div>
+
+        <h2>Get the Framework: <code>secure-tdd-agent-framework</code></h2>
+
+        <div class="grid-asym">
+          <div style="display: flex; flex-direction: column; gap: var(--gap-md); justify-content: space-between;">
+            <div class="card">
+              <span class="card-kicker">Repository Layout (canonical source of truth)</span>
+              <pre class="code-box" style="margin-top: 4px;"><code>secure-tdd-agent-framework/
+├── CONTEXT.md · threat_model.md · AGENTS.md · CLAUDE.md
+├── .agents/
+│   ├── rules/secure_tdd_workflow.md        <span class="cm"># always_on: Plan → Red → Green → Refactor</span>
+│   ├── skills/{threat_model_assessor, security_test_writer, defensive_developer,
+│   │           local_refactor_scanner, skill_evolution_updater, history_context_seeder}/
+│   ├── hooks.json · security_gate_hook.sh  <span class="cm"># git security gate</span>
+│   ├── lib/{gate_common, engine_codemender, engine_semgrep → engine_wiz}.sh
+│   └── tests/                              <span class="cm"># 38 offline hook mock tests</span>
+├── sample_app/{app.py, utils/security.py}  <span class="cm"># approved safe helpers</span>
+├── tests/test_sample_app.py                <span class="cm"># 10 functional + boundary tests</span>
+└── scripts/sync_downstream.py              <span class="cm"># → secure-tdd-antigravity · secure-tdd-claude-code</span></code></pre>
+            </div>
+            <div class="card">
+              <span class="card-kicker">Quick Start</span>
+              <pre class="code-box"><code>git clone <span id="clone-url-display" class="st">https://github.com/h3xar0n/secure-tdd-agent-framework</span>
+pip install -r requirements.txt &amp;&amp; pytest tests/      <span class="cm"># 10/10 functional + security</span>
+bash .agents/tests/run_tests.sh                          <span class="cm"># 38/38 offline hook tests</span>
+cm init --verify &amp;&amp; wizcli auth --id … --secret …        <span class="cm"># enable Stage 2 · Stage 1</span></code></pre>
+            </div>
+          </div>
+
+          <div class="qr-showcase-card">
+            <span class="card-kicker">Scan to Open the Repository</span>
+            <div class="qr-svg-frame" id="qr-container" role="img" aria-label="QR code linking to the secure-tdd-agent-framework repository">
+              <!-- Populated dynamically by client-side ISO/IEC 18004 QR SVG encoder -->
+            </div>
+            <div id="qr-caption" style="font-family: var(--font-mono); font-size: 0.74rem; color: #202124; font-weight: 700; word-break: break-all;">
+              https://github.com/h3xar0n/secure-tdd-agent-framework
+            </div>
+
+            <div class="qr-url-editor">
+              <input
+                type="url"
+                id="qr-url-input"
+                class="qr-url-input"
+                value="https://github.com/h3xar0n/secure-tdd-agent-framework"
+                aria-label="Target Git Repository URL for QR Code"
+                placeholder="Paste a fork or mirror URL to regenerate QR..."
+              >
+              <button class="qr-url-btn" id="qr-update-btn" onclick="updateQrFromInput()">Update QR</button>
+            </div>
+            <div style="font-size: 0.72rem; color: var(--deck-text-muted); margin-top: 2px;">Downstream: <code>secure-tdd-antigravity</code> · <code>secure-tdd-claude-code</code></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Fixed Navigation Chrome (Required by html-presentation skill) -->
+  <button class="home-btn" id="home-btn" onclick="show(0)" title="First Slide (Home)" aria-label="First Slide">⌂</button>
+  <div class="deck-footer-hint">← / → / Space to navigate · N: Speaker Notes · P: Presenter View</div>
+  <div class="counter" id="ctr" aria-live="polite">1 / 12</div>
+  <nav class="slide-nav" aria-label="Slide Navigation">
+    <button id="prev-btn" onclick="go(-1)" title="Previous Slide (←)" aria-label="Previous Slide">←</button>
+    <button id="next-btn" onclick="go(1)" title="Next Slide (→)" aria-label="Next Slide">→</button>
+  </nav>
+  <div class="progress" id="prog" role="progressbar" aria-valuemin="1" aria-valuemax="12" aria-valuenow="1"></div>
+
+  <!-- Speaker Notes Drawer (Toggled with N) -->
+  <div class="notes-panel" id="notes" role="region" aria-label="Speaker Notes">
+    <div class="nh">Speaker Notes · press N to toggle · press P for synced Presenter View</div>
+    <div id="nt"></div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       1. SLIDE NAVIGATION, NOTES PANEL & BROADCASTCHANNEL SYNC
+       ========================================================================== */
+    const slides = Array.from(document.querySelectorAll('.s'));
+    const totalSlides = slides.length;
+    let currentSlide = 0;
+    const syncChannel = typeof BroadcastChannel !== 'undefined'
+      ? new BroadcastChannel('secured-sdlc-deck')
+      : null;
+
+    function show(idx, broadcast = true) {
+      if (idx < 0 || idx >= totalSlides) return;
+      slides.forEach((s, i) => {
+        s.classList.toggle('active', i === idx);
+      });
+      currentSlide = idx;
+
+      const pct = ((currentSlide + 1) / totalSlides) * 100;
+      const progEl = document.getElementById('prog');
+      const ctrEl = document.getElementById('ctr');
+      const ntEl = document.getElementById('nt');
+
+      if (progEl) {
+        progEl.style.width = pct.toFixed(2) + '%';
+        progEl.setAttribute('aria-valuenow', String(currentSlide + 1));
+      }
+      if (ctrEl) {
+        ctrEl.textContent = (currentSlide + 1) + ' / ' + totalSlides;
+      }
+      if (ntEl) {
+        ntEl.innerHTML = slides[currentSlide].getAttribute('data-notes') || '';
+      }
+
+      if (broadcast && syncChannel) {
+        syncChannel.postMessage({ type: 'slide-change', index: currentSlide });
+      }
+    }
+
+    function go(delta) {
+      const nextIdx = currentSlide + delta;
+      if (nextIdx >= 0 && nextIdx < totalSlides) {
+        if (document.startViewTransition) {
+          document.startViewTransition(() => show(nextIdx));
+        } else {
+          show(nextIdx);
+        }
+      }
+    }
+
+    function toggleNotes() {
+      const notesPanel = document.getElementById('notes');
+      if (notesPanel) {
+        notesPanel.classList.toggle('open');
+      }
+    }
+
+    if (syncChannel) {
+      syncChannel.onmessage = (event) => {
+        if (event.data && event.data.type === 'slide-change') {
+          show(Number(event.data.index), false);
+        }
+      };
+    }
+
+    /* ==========================================================================
+       2. SECURE PRESENTER VIEW (window.opener.getSlideData + BroadcastChannel)
+       ========================================================================== */
+    window.getSlideData = () => slides.map((s, idx) => ({
+      idx,
+      title: s.getAttribute('data-title') || ('Slide ' + (idx + 1)),
+      notes: s.getAttribute('data-notes') || ''
+    }));
+
+    window.getCurrentSlideIndex = () => currentSlide;
+
+    function openPresenter() {
+      const win = window.open('', 'SecuredSdlcPresenter', 'width=980,height=680');
+      if (!win) return;
+
+      const presenterHtml = [
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Presenter View — secured-sdlc</title>',
+        '<style>',
+        'body { margin: 0; padding: 28px; background: #F8F9FA; color: #202124; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; gap: 20px; }',
+        '.top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #DADCE0; padding-bottom: 16px; }',
+        '.timer { font-family: ui-monospace, monospace; font-size: 2rem; font-weight: 700; color: #1A73E8; }',
+        '.ctr { font-family: ui-monospace, monospace; font-size: 1.4rem; color: #5F6368; }',
+        '.controls button { background: #FFFFFF; color: #202124; border: 1px solid #BDC1C6; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-left: 8px; }',
+        '.controls button:hover { border-color: #1A73E8; color: #1A73E8; }',
+        '.main { flex: 1; display: grid; grid-template-columns: 2fr 1fr; gap: 20px; overflow: hidden; }',
+        '.panel { background: #FFFFFF; border: 1px solid #DADCE0; border-radius: 12px; padding: 22px; overflow-y: auto; box-shadow: 0 1px 3px rgba(32,33,36,0.08); }',
+        '.label { font-family: ui-monospace, monospace; font-size: 0.78rem; text-transform: uppercase; color: #1A73E8; font-weight: 600; margin-bottom: 10px; }',
+        '#p-title { font-size: 1.35rem; font-weight: 700; margin-bottom: 14px; color: #202124; }',
+        '#p-notes { font-size: 1.15rem; line-height: 1.65; color: #3C4043; }',
+        '#p-next { font-size: 1.05rem; color: #007B83; font-weight: 600; }',
+        '</style></head><body>',
+        '<div class="top">',
+        '  <div><div class="label">Elapsed Time</div><div class="timer" id="p-timer">00:00</div></div>',
+        '  <div class="ctr" id="p-ctr">1 / 12</div>',
+        '  <div class="controls">',
+        '    <button onclick="navTo(0)">⌂ Home</button>',
+        '    <button onclick="step(-1)">← Prev</button>',
+        '    <button onclick="step(1)">Next →</button>',
+        '  </div>',
+        '</div>',
+        '<div class="main">',
+        '  <div class="panel"><div class="label">Current Slide &amp; Speaker Notes</div><div id="p-title"></div><div id="p-notes"></div></div>',
+        '  <div class="panel"><div class="label">Up Next</div><div id="p-next"></div></div>',
+        '</div>',
+        '<script>',
+        'const slidesData = window.opener && window.opener.getSlideData ? window.opener.getSlideData() : [];',
+        'let cur = window.opener && window.opener.getCurrentSlideIndex ? window.opener.getCurrentSlideIndex() : 0;',
+        'const ch = new BroadcastChannel("secured-sdlc-deck");',
+        'function render() {',
+        '  if (!slidesData.length) return;',
+        '  const item = slidesData[cur] || slidesData[0];',
+        '  document.getElementById("p-ctr").textContent = (cur + 1) + " / " + slidesData.length;',
+        '  document.getElementById("p-title").textContent = item.title;',
+        '  document.getElementById("p-notes").innerHTML = item.notes;',
+        '  const nxt = slidesData[cur + 1];',
+        '  document.getElementById("p-next").textContent = nxt ? ((cur + 2) + ". " + nxt.title) : "End of Presentation";',
+        '}',
+        'function navTo(i) { if (i >= 0 && i < slidesData.length) { cur = i; render(); ch.postMessage({ type: "slide-change", index: cur }); } }',
+        'function step(d) { navTo(cur + d); }',
+        'ch.onmessage = (e) => { if (e.data && e.data.type === "slide-change") { cur = Number(e.data.index); render(); } };',
+        'document.addEventListener("keydown", (e) => {',
+        '  if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); step(1); }',
+        '  if (e.key === "ArrowLeft") { e.preventDefault(); step(-1); }',
+        '});',
+        'let sec = 0; setInterval(() => { sec++; const m = String(Math.floor(sec / 60)).padStart(2, "0"); const s = String(sec % 60).padStart(2, "0"); document.getElementById("p-timer").textContent = m + ":" + s; }, 1000);',
+        'render();',
+        '<\/script></body></html>'
+      ].join('\n');
+
+      win.document.open();
+      win.document.write(presenterHtml);
+      win.document.close();
+    }
+
+    /* ==========================================================================
+       3. KEYBOARD & TOUCH LISTENERS
+       ========================================================================== */
+    document.addEventListener('keydown', (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          updateQrFromInput();
+        }
+        return;
+      }
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        go(1);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        go(-1);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        show(0);
+      } else if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        toggleNotes();
+      } else if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault();
+        openPresenter();
+      }
+    });
+
+    /* ==========================================================================
+       4. PURE CLIENT-SIDE ISO/IEC 18004 QR CODE SVG GENERATOR (ZERO-DEPENDENCY)
+       Supports Versions 1-6 (Byte Mode, Error Correction Level L, up to 134 chars)
+       ========================================================================== */
+    const QR_VERSIONS = [
+      null,
+      { size: 21, totalData: 19, ecPerBlock: 7, blocks: 1, align: [] },
+      { size: 25, totalData: 34, ecPerBlock: 10, blocks: 1, align: [6, 18] },
+      { size: 29, totalData: 55, ecPerBlock: 15, blocks: 1, align: [6, 22] },
+      { size: 33, totalData: 80, ecPerBlock: 20, blocks: 1, align: [6, 26] },
+      { size: 37, totalData: 108, ecPerBlock: 26, blocks: 1, align: [6, 30] },
+      { size: 41, totalData: 136, ecPerBlock: 18, blocks: 2, align: [6, 34] }
+    ];
+
+    const GF_EXP = new Uint8Array(512);
+    const GF_LOG = new Uint8Array(256);
+    (function initGaloisField() {
+      let x = 1;
+      for (let i = 0; i < 255; i++) {
+        GF_EXP[i] = x;
+        GF_LOG[x] = i;
+        x <<= 1;
+        if (x & 0x100) x ^= 0x11D;
+      }
+      for (let i = 255; i < 512; i++) {
+        GF_EXP[i] = GF_EXP[i - 255];
+      }
+    })();
+
+    function gfMul(a, b) {
+      return (a === 0 || b === 0) ? 0 : GF_EXP[GF_LOG[a] + GF_LOG[b]];
+    }
+
+    function rsGeneratorPoly(degree) {
+      let poly = new Uint8Array([1]);
+      for (let i = 0; i < degree; i++) {
+        const next = new Uint8Array(poly.length + 1);
+        const root = GF_EXP[i];
+        for (let j = 0; j < poly.length; j++) {
+          next[j] ^= poly[j];
+          next[j + 1] ^= gfMul(poly[j], root);
+        }
+        poly = next;
+      }
+      return poly;
+    }
+
+    function rsEncode(dataBytes, ecLen) {
+      const gen = rsGeneratorPoly(ecLen);
+      const rem = new Uint8Array(ecLen);
+      for (let i = 0; i < dataBytes.length; i++) {
+        const factor = dataBytes[i] ^ rem[0];
+        rem.copyWithin(0, 1);
+        rem[ecLen - 1] = 0;
+        if (factor !== 0) {
+          for (let j = 0; j < ecLen; j++) {
+            rem[j] ^= gfMul(gen[j + 1], factor);
+          }
+        }
+      }
+      return rem;
+    }
+
+    function generateQrSvg(text) {
+      const utf8 = new TextEncoder().encode(text.trim() || 'https://github.com');
+      let ver = 1;
+      while (ver <= 6 && utf8.length + 2 > QR_VERSIONS[ver].totalData) {
+        ver++;
+      }
+      const spec = QR_VERSIONS[Math.min(ver, 6)];
+      const maxPayload = spec.totalData - 2;
+      const bytes = utf8.slice(0, maxPayload);
+
+      const bits = [];
+      const pushBits = (val, len) => {
+        for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1);
+      };
+      pushBits(0b0100, 4);
+      pushBits(bytes.length, 8);
+      for (let i = 0; i < bytes.length; i++) pushBits(bytes[i], 8);
+
+      const maxBits = spec.totalData * 8;
+      const term = Math.min(4, maxBits - bits.length);
+      pushBits(0, term);
+      while (bits.length % 8 !== 0) bits.push(0);
+
+      const dataCodewords = new Uint8Array(spec.totalData);
+      const byteCount = bits.length / 8;
+      for (let i = 0; i < byteCount; i++) {
+        let b = 0;
+        for (let bit = 0; bit < 8; bit++) b = (b << 1) | bits[i * 8 + bit];
+        dataCodewords[i] = b;
+      }
+      const pads = [0xEC, 0x11];
+      for (let i = byteCount; i < spec.totalData; i++) {
+        dataCodewords[i] = pads[(i - byteCount) % 2];
+      }
+
+      const finalBytes = [];
+      if (spec.blocks === 1) {
+        const ec = rsEncode(dataCodewords, spec.ecPerBlock);
+        for (const b of dataCodewords) finalBytes.push(b);
+        for (const b of ec) finalBytes.push(b);
+      } else {
+        const half = spec.totalData / 2;
+        const b1 = dataCodewords.slice(0, half);
+        const b2 = dataCodewords.slice(half);
+        const ec1 = rsEncode(b1, spec.ecPerBlock);
+        const ec2 = rsEncode(b2, spec.ecPerBlock);
+        for (let i = 0; i < half; i++) { finalBytes.push(b1[i], b2[i]); }
+        for (let i = 0; i < spec.ecPerBlock; i++) { finalBytes.push(ec1[i], ec2[i]); }
+      }
+
+      const N = spec.size;
+      const grid = Array.from({ length: N }, () => new Uint8Array(N));
+      const reserved = Array.from({ length: N }, () => new Uint8Array(N));
+
+      const setMod = (r, c, dark) => {
+        if (r >= 0 && r < N && c >= 0 && c < N) {
+          grid[r][c] = dark ? 1 : 0;
+          reserved[r][c] = 1;
+        }
+      };
+
+      const placeFinder = (r0, c0) => {
+        for (let dr = -1; dr <= 7; dr++) {
+          for (let dc = -1; dc <= 7; dc++) {
+            const inOuter = dr >= 0 && dr <= 6 && dc >= 0 && dc <= 6;
+            const onBorder = dr === 0 || dr === 6 || dc === 0 || dc === 6;
+            const inInner = dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4;
+            setMod(r0 + dr, c0 + dc, inOuter && (onBorder || inInner));
+          }
+        }
+      };
+      placeFinder(0, 0);
+      placeFinder(0, N - 7);
+      placeFinder(N - 7, 0);
+
+      if (spec.align.length > 0) {
+        for (const ar of spec.align) {
+          for (const ac of spec.align) {
+            if (reserved[ar][ac]) continue;
+            for (let dr = -2; dr <= 2; dr++) {
+              for (let dc = -2; dc <= 2; dc++) {
+                const dark = Math.max(Math.abs(dr), Math.abs(dc)) !== 1;
+                setMod(ar + dr, ac + dc, dark);
+              }
+            }
+          }
+        }
+      }
+
+      for (let i = 8; i < N - 8; i++) {
+        if (!reserved[6][i]) setMod(6, i, i % 2 === 0);
+        if (!reserved[i][6]) setMod(i, 6, i % 2 === 0);
+      }
+
+      setMod(N - 8, 8, true);
+      for (let i = 0; i < 9; i++) {
+        if (!reserved[8][i]) reserved[8][i] = 1;
+        if (!reserved[i][8]) reserved[i][8] = 1;
+      }
+      for (let i = 0; i < 8; i++) {
+        if (!reserved[8][N - 1 - i]) reserved[8][N - 1 - i] = 1;
+        if (!reserved[N - 1 - i][8]) reserved[N - 1 - i][8] = 1;
+      }
+
+      let bitIdx = 0;
+      const totalStreamBits = finalBytes.length * 8;
+      let upward = true;
+      for (let col = N - 1; col > 0; col -= 2) {
+        if (col === 6) col--;
+        for (let step = 0; step < N; step++) {
+          const r = upward ? (N - 1 - step) : step;
+          for (let dx = 0; dx < 2; dx++) {
+            const c = col - dx;
+            if (!reserved[r][c]) {
+              let bit = 0;
+              if (bitIdx < totalStreamBits) {
+                bit = (finalBytes[bitIdx >>> 3] >>> (7 - (bitIdx & 7))) & 1;
+                bitIdx++;
+              }
+              if ((r + c) % 2 === 0) bit ^= 1;
+              grid[r][c] = bit;
+            }
+          }
+        }
+        upward = !upward;
+      }
+
+      const fmtBits = 0x77C4;
+      const fmtCoords1 = [
+        [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],[8,8],
+        [7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8]
+      ];
+      for (let i = 0; i < 15; i++) {
+        const bit = (fmtBits >>> i) & 1;
+        const [r1, c1] = fmtCoords1[i];
+        grid[r1][c1] = bit;
+        if (i < 7) {
+          grid[N - 1 - i][8] = bit;
+        } else {
+          grid[8][N - 15 + i] = bit;
+        }
+      }
+
+      const quiet = 2;
+      const totalDim = N + quiet * 2;
+      let pathData = '';
+      for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) {
+          if (grid[r][c]) {
+            pathData += `M${c + quiet},${r + quiet}h1v1h-1z`;
+          }
+        }
+      }
+      return `<svg viewBox="0 0 ${totalDim} ${totalDim}" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" role="img" aria-label="QR Code for ${text.replace(/"/g, '&quot;')}"><rect width="${totalDim}" height="${totalDim}" fill="#FFFFFF"/><path d="${pathData}" fill="#0B1221"/></svg>`;
+    }
+
+    function updateQrFromInput() {
+      const inputEl = document.getElementById('qr-url-input');
+      const containerEl = document.getElementById('qr-container');
+      const captionEl = document.getElementById('qr-caption');
+      const cloneUrlEl = document.getElementById('clone-url-display');
+      if (!inputEl || !containerEl) return;
+
+      const url = inputEl.value.trim() || 'https://github.com/h3xar0n/secure-tdd-agent-framework';
+      containerEl.innerHTML = generateQrSvg(url);
+      if (captionEl) captionEl.textContent = url;
+      if (cloneUrlEl) cloneUrlEl.textContent = url;
+    }
+
+    // Initialize Slide 0 and QR Code on load
+    show(0, false);
+    updateQrFromInput();
+  </script>
+</body>
+</html>
